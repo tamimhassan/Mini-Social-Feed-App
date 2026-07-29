@@ -78,10 +78,6 @@ export async function registerFcmToken(fcmToken: string): Promise<void> {
   try {
     await apiClient.post('/auth/fcm-token', { fcmToken });
   } catch (err) {
-    // Non-fatal by design — a failed push registration should never break
-    // the login/signup flow that called it. Caller (AuthContext) already
-    // wraps this in its own try/catch, but we keep this quiet-fail here too
-    // in case registerFcmToken is ever called from elsewhere.
     console.warn(
       'Failed to register FCM token:',
       err instanceof Error ? err.message : err,
@@ -89,12 +85,6 @@ export async function registerFcmToken(fcmToken: string): Promise<void> {
   }
 }
 
-/**
- * Re-fetches the current user from the backend using the stored JWT.
- * Useful on app launch to confirm the cached session is still valid
- * (e.g. token hasn't expired) rather than trusting the AsyncStorage
- * copy indefinitely.
- */
 export async function getMe(): Promise<User> {
   try {
     const { data } = await apiClient.get<{ user: RawUser }>('/auth/me');

@@ -5,8 +5,8 @@ export interface ApiErrorDetail {
   field: string;
   message: string;
 }
-// TODO: replace with your deployed backend URL (or local IP for dev, e.g. http://192.168.1.x:4000/api)
-export const BASE_URL = 'http://192.168.0.193:4000/api';
+
+export const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -23,7 +23,6 @@ apiClient.interceptors.request.use(async (config) => {
 });
 
 // Normalize error messages so every screen can just do err.message
-
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {

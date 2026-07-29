@@ -4,7 +4,9 @@ import * as Notifications from 'expo-notifications';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { ErrorBoundary } from 'react-error-boundary';
 import { AuthProvider } from '@/context/AuthContext';
+import { ErrorFallback } from '@/components/ErrorFallback';
 
 export default function RootLayout() {
   const notificationListener = useRef<Notifications.EventSubscription | null>(
@@ -35,13 +37,20 @@ export default function RootLayout() {
   }, []);
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#FFF' }}>
-      <AuthProvider>
-        <StatusBar style='dark' />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name='(auth)' />
-          <Stack.Screen name='(app)' />
-        </Stack>
-      </AuthProvider>
+      <ErrorBoundary
+        FallbackComponent={ErrorFallback}
+        onError={(error, info) =>
+          console.warn('Caught render error in ErrorBoundary:', error, info)
+        }
+      >
+        <AuthProvider>
+          <StatusBar style='dark' />
+          <Stack screenOptions={{ headerShown: false }}>
+            <Stack.Screen name='(auth)' />
+            <Stack.Screen name='(app)' />
+          </Stack>
+        </AuthProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

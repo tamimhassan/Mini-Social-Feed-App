@@ -13,7 +13,7 @@ import { router } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { TPostCard } from '@/types/models';
-import { getPosts } from '@/services/post.service';
+import { getPosts, PostError } from '@/services/post.service';
 import { useAuth } from '@/context/AuthContext';
 import PostCard from '@/components/PostCard';
 
@@ -25,14 +25,22 @@ export default function FeedScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadFeed = useCallback(async (username: string, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
+    setLoadError(null);
     try {
       const result = await getPosts(null, username);
       setPosts(result.posts);
       setNextCursor(result.nextCursor);
+    } catch (err) {
+      setPosts([]);
+      setNextCursor(null);
+      setLoadError(
+        err instanceof PostError ? err.message : 'Unable to load feed',
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -58,6 +66,12 @@ export default function FeedScreen() {
       const result = await getPosts(nextCursor, filter);
       setPosts((prev) => [...prev, ...result.posts]);
       setNextCursor(result.nextCursor);
+    } catch (err) {
+      // Don't clear existing posts on a "load more" failure — just stop paginating
+      console.warn(
+        'Failed to load more posts:',
+        err instanceof Error ? err.message : err,
+      );
     } finally {
       setLoadingMore(false);
     }
@@ -90,6 +104,13 @@ export default function FeedScreen() {
         <View style={styles.centered}>
           <ActivityIndicator size='large' color='#111827' />
         </View>
+      ) : loadError ? (
+        <Animated.View entering={FadeIn} style={styles.centered}>
+          <Text style={styles.emptyText}>{loadError}</Text>
+          <Pressable style={styles.retryBtn} onPress={() => loadFeed(filter)}>
+            <Text style={styles.retryText}>Try again</Text>
+          </Pressable>
+        </Animated.View>
       ) : posts.length === 0 ? (
         <Animated.View entering={FadeIn} style={styles.centered}>
           <Text style={styles.emptyText}>No posts found</Text>
@@ -149,8 +170,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: '#9CA3AF', fontSize: 15 },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  emptyText: {
+    color: '#9CA3AF',
+    fontSize: 15,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  retryBtn: {
+    backgroundColor: '#111827',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryText: { color: '#fff', fontWeight: '600' },
   fab: {
     position: 'absolute',
     bottom: 28,

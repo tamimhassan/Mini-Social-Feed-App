@@ -7,11 +7,11 @@ import Animated, {
   withSpring,
   withSequence,
 } from 'react-native-reanimated';
-import { Post } from '../types/models';
+import { TPostCard } from '../types/models';
 import { toggleLike } from '../services/post.service';
 
 interface Props {
-  post: Post;
+  post: TPostCard;
   commentInputRef?: React.RefObject<TextInput | null>;
   onLikeChange?: (
     postId: string,
@@ -86,16 +86,16 @@ export default function PostCard({
       <View style={styles.header}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
-            {post.username.charAt(0).toUpperCase()}
+            {post.author.username.charAt(0).toUpperCase()}
           </Text>
         </View>
         <View>
-          <Text style={styles.username}>{post.username}</Text>
+          <Text style={styles.username}>{post.author.username}</Text>
           <Text style={styles.time}>{timeAgo(post.createdAt)}</Text>
         </View>
       </View>
 
-      <Text style={styles.text}>{post.text}</Text>
+      <Text style={styles.text}>{post.content}</Text>
 
       <View style={styles.footer}>
         <Pressable style={styles.actionBtn} onPress={handleLike} hitSlop={8}>
@@ -111,7 +111,7 @@ export default function PostCard({
 
         <Pressable style={styles.actionBtn} onPress={handleComment} hitSlop={8}>
           <Text style={styles.icon}>💬</Text>
-          <Text style={styles.actionText}>{post.comments.length}</Text>
+          <Text style={styles.actionText}>{post.commentCount}</Text>
         </Pressable>
       </View>
     </Pressable>

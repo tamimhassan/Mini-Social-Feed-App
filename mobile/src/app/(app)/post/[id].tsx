@@ -13,29 +13,44 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { Post } from '@/types/models';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { TPostDetail } from '@/types/models';
 import { getPostById, addComment, PostError } from '@/services/post.service';
 import { useAuth } from '@/context/AuthContext';
+import { commentSchema, CommentFormData } from '@/utils/validation';
 import PostCard from '@/components/PostCard';
 
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const [post, setPost] = useState<Post | null>(null);
+  const [post, setPost] = useState<TPostDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [commentText, setCommentText] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const commentInputRef = useRef<TextInput>(null);
 
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CommentFormData>({
+    resolver: yupResolver(commentSchema),
+    defaultValues: { text: '' },
+  });
+
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const result = await getPostById(id);
       setPost(result);
-    } catch {
-      setError('Post not found');
+    } catch (err) {
+      setLoadError(
+        err instanceof PostError ? err.message : 'Failed to load post',
+      );
     } finally {
       setLoading(false);
     }
@@ -45,17 +60,17 @@ export default function PostDetailScreen() {
     load();
   }, [load]);
 
-  const handleAddComment = async () => {
-    if (!commentText.trim() || !user || !post) return;
-    setSubmitting(true);
+  const onSubmitComment = async (data: CommentFormData) => {
+    if (!user || !post) return;
+    setServerError(null);
     try {
-      await addComment(post.id, commentText, user.id, user.username);
-      setCommentText('');
+      await addComment(post.id, data.text, user.id, user.username);
+      reset({ text: '' });
       await load();
     } catch (err) {
-      setError(err instanceof PostError ? err.message : 'Failed to comment');
-    } finally {
-      setSubmitting(false);
+      setServerError(
+        err instanceof PostError ? err.message : 'Failed to add comment',
+      );
     }
   };
 
@@ -67,10 +82,13 @@ export default function PostDetailScreen() {
     );
   }
 
-  if (!post) {
+  if (loadError || !post) {
     return (
       <SafeAreaView style={styles.centered}>
-        <Text style={styles.errorText}>{error ?? 'Post not found'}</Text>
+        <Text style={styles.errorText}>{loadError ?? 'Post not found'}</Text>
+        <Pressable style={styles.retryBtn} onPress={load}>
+          <Text style={styles.retryText}>Try again</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }
@@ -97,12 +115,12 @@ export default function PostDetailScreen() {
             <Animated.View entering={FadeIn} style={styles.commentRow}>
               <View style={styles.commentAvatar}>
                 <Text style={styles.commentAvatarText}>
-                  {item.username.charAt(0).toUpperCase()}
+                  {item.user.username.charAt(0).toUpperCase()}
                 </Text>
               </View>
               <View style={styles.commentBubble}>
-                <Text style={styles.commentUsername}>{item.username}</Text>
-                <Text style={styles.commentText}>{item.text}</Text>
+                <Text style={styles.commentUsername}>{item.user.username}</Text>
+                <Text style={styles.commentText}>{item.content}</Text>
               </View>
             </Animated.View>
           )}
@@ -114,29 +132,40 @@ export default function PostDetailScreen() {
           contentContainerStyle={{ paddingBottom: 20 }}
         />
 
-        <View style={styles.inputBar}>
-          <TextInput
-            style={styles.commentInput}
-            placeholder='Add a comment...'
-            placeholderTextColor='#9CA3AF'
-            value={commentText}
-            onChangeText={setCommentText}
-            ref={commentInputRef}
-          />
-          <Pressable
-            style={[
-              styles.sendBtn,
-              !commentText.trim() && styles.sendBtnDisabled,
-            ]}
-            onPress={handleAddComment}
-            disabled={submitting || !commentText.trim()}
-          >
-            {submitting ? (
-              <ActivityIndicator size='small' color='#fff' />
-            ) : (
-              <Text style={styles.sendText}>Send</Text>
-            )}
-          </Pressable>
+        <View>
+          <View style={styles.inputBar}>
+            <Controller
+              control={control}
+              name='text'
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  style={styles.commentInput}
+                  placeholder='Add a comment...'
+                  placeholderTextColor='#9CA3AF'
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  ref={commentInputRef}
+                />
+              )}
+            />
+            <Pressable
+              style={[styles.sendBtn, isSubmitting && styles.sendBtnDisabled]}
+              onPress={handleSubmit(onSubmitComment)}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size='small' color='#fff' />
+              ) : (
+                <Text style={styles.sendText}>Send</Text>
+              )}
+            </Pressable>
+          </View>
+          {(errors.text || serverError) && (
+            <Text style={styles.inlineError}>
+              {errors.text?.message ?? serverError}
+            </Text>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -150,8 +179,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
+    gap: 12,
   },
   errorText: { color: '#6B7280', fontSize: 15 },
+  retryBtn: {
+    backgroundColor: '#111827',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryText: { color: '#fff', fontWeight: '600' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -224,4 +261,11 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { backgroundColor: '#D1D5DB' },
   sendText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  inlineError: {
+    color: '#DC2626',
+    fontSize: 13,
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+    backgroundColor: '#fff',
+  },
 });

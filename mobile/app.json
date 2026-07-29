@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.tamimhassan.mobile"
+      "bundleIdentifier": "com.tamimhassan.mobile",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +20,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.tamimhassan.mobile"
+      "package": "com.tamimhassan.mobile",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

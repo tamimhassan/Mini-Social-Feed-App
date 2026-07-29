@@ -1,19 +1,14 @@
 import {
   createContext,
   useContext,
-  useEffect,
-  useMemo,
   useState,
+  useEffect,
   ReactNode,
 } from 'react';
-import { storage } from '@/services/storage.service';
-
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  username: string;
-};
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { User } from '@/types/models';
+import { registerForPushNotifications } from '@/services/notification.service';
+import { getMe, registerFcmToken } from '@/services/auth.service';
 
 interface AuthContextType {
   user: User | null;
@@ -25,67 +20,72 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const USER_STORAGE_KEY = 'authUser';
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Restore session on app launch — token itself is read by the axios
+  // interceptor directly from AsyncStorage, so we only need the user object here.
   useEffect(() => {
-    loadLoginData();
+    (async () => {
+      try {
+        const storedToken = await AsyncStorage.getItem('authToken');
+        if (storedToken) {
+          const freshUser = await getMe(); // throws AuthError if token expired/invalid
+          setUser(freshUser);
+          setToken(storedToken);
+          await AsyncStorage.setItem(
+            USER_STORAGE_KEY,
+            JSON.stringify(freshUser),
+          );
+        }
+      } catch (err) {
+        // Token expired or invalid — clear it so the user is sent back to login
+        await AsyncStorage.multiRemove([USER_STORAGE_KEY, 'authToken']);
+        console.warn('Session restore failed, logging out:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
-  async function loadLoginData() {
+  const login = async (newUser: User, newToken: string) => {
+    setUser(newUser);
+    setToken(newToken);
+    await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
+    // authToken itself is already stored by auth.service.ts's login/signup calls
+
+    // Push registration happens after auth succeeds, but must never block or
+    // break login — a denied permission or a dev-client-less Expo Go session
+    // should not prevent someone from using the app.
     try {
-      const storedUser = await storage.getItem('user');
-      const storedToken = await storage.getItem('token');
-
-      if (storedUser) {
-        setUser(JSON.parse(storedUser));
+      const pushToken = await registerForPushNotifications();
+      if (pushToken) {
+        await registerFcmToken(pushToken);
       }
-      if (storedToken) {
-        setToken(storedToken);
-      }
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      console.warn('Push notification registration skipped:', err);
     }
-  }
+  };
 
-  async function login(userData: User, token: string) {
-    await storage.setItem('user', JSON.stringify(userData));
-    setUser(userData);
-    await storage.setItem('token', token);
-    setToken(token);
-  }
-
-  async function logout() {
-    await storage.removeItem('user');
+  const logout = async () => {
     setUser(null);
-    await storage.removeItem('token');
     setToken(null);
-  }
+    await AsyncStorage.multiRemove([USER_STORAGE_KEY, 'authToken']);
+  };
 
-  const value = useMemo(
-    () => ({
-      user,
-      token,
-      isLoading,
-      login,
-      logout,
-    }),
-    [user, isLoading, token],
+  return (
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error('useAuth must be used inside AuthProvider');
-  }
-
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 }

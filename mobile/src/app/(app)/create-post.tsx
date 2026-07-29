@@ -12,66 +12,90 @@ import { router } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { createPost, PostError } from '@/services/post.service';
+import { CreatePostFormData, createPostSchema } from '@/utils/validation';
+import { yupResolver } from '@hookform/resolvers/yup';
+import { Controller, useForm } from 'react-hook-form';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const MAX_LENGTH = 280;
+const POST_CONTENT_MAX_LENGTH = 2000;
 
 export default function CreatePostScreen() {
   const { user } = useAuth();
-  const [text, setText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
-  const handlePost = async () => {
-    setError(null);
-    if (!text.trim()) {
-      setError('Post cannot be empty');
-      return;
-    }
+  const {
+    control,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting, isValid },
+  } = useForm<CreatePostFormData>({
+    resolver: yupResolver(createPostSchema),
+    defaultValues: { content: '' },
+    mode: 'onChange',
+  });
+
+  const contentValue = watch('content');
+
+  const onSubmit = async (data: CreatePostFormData) => {
     if (!user) return;
-    setLoading(true);
+    setServerError(null);
     try {
-      await createPost(text, user.id, user.username);
+      await createPost(data.content, user.id, user.username);
       router.back();
     } catch (err) {
-      setError(err instanceof PostError ? err.message : 'Failed to post');
-    } finally {
-      setLoading(false);
+      setServerError(err instanceof PostError ? err.message : 'Failed to post');
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Animated.View entering={FadeInDown.duration(400)} style={styles.body}>
-        <TextInput
-          style={styles.input}
-          placeholder="What's on your mind?"
-          placeholderTextColor='#9CA3AF'
-          multiline
-          autoFocus
-          maxLength={MAX_LENGTH}
-          value={text}
-          onChangeText={setText}
-        />
-        <Text style={styles.counter}>
-          {text.length}/{MAX_LENGTH}
-        </Text>
-        {error && <Text style={styles.error}>{error}</Text>}
-      </Animated.View>
-      <Pressable
-        style={styles.postBtn}
-        onPress={handlePost}
-        disabled={loading || !text.trim()}
+    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {loading ? (
-          <ActivityIndicator size='small' color='#fff' />
-        ) : (
-          <Text style={styles.postBtnText}>Post</Text>
-        )}
-      </Pressable>
-    </KeyboardAvoidingView>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.body}>
+          <Controller
+            control={control}
+            name='content'
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                style={styles.input}
+                placeholder="What's on your mind?"
+                placeholderTextColor='#9CA3AF'
+                multiline
+                autoFocus
+                numberOfLines={10}
+                maxLength={POST_CONTENT_MAX_LENGTH}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            )}
+          />
+          <Text style={styles.counter}>
+            {(contentValue ?? '').length}/{POST_CONTENT_MAX_LENGTH}
+          </Text>
+
+          {errors.content && (
+            <Text style={styles.error}>{errors.content.message}</Text>
+          )}
+          {serverError && <Text style={styles.error}>{serverError}</Text>}
+        </Animated.View>
+        <Pressable
+          style={styles.postBtn}
+          onPress={handleSubmit(onSubmit)}
+          disabled={isSubmitting || !isValid}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator size='small' color='#fff' />
+          ) : (
+            <Text style={[styles.post, !isValid && styles.postDisabled]}>
+              Post now
+            </Text>
+          )}
+        </Pressable>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -86,28 +110,36 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  cancel: { fontSize: 15, color: '#6B7280' },
-  headerTitle: { fontSize: 16, fontWeight: '600', color: '#111827' },
-  post: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  postDisabled: { color: '#D1D5DB' },
-  body: { padding: 20 },
+  post: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  postDisabled: { color: '#9CA3AF' },
+  body: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
   input: {
-    fontSize: 18,
     color: '#111827',
     minHeight: 140,
     textAlignVertical: 'top',
     borderWidth: 1,
-    borderColor: '#11182780',
+    borderColor: '#E5E7EB',
     borderRadius: 12,
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    backgroundColor: '#F9FAFB',
   },
-  counter: { textAlign: 'right', color: '#9CA3AF', fontSize: 13, marginTop: 8 },
-  error: { color: '#DC2626', fontSize: 14, marginTop: 8 },
+  counter: { textAlign: 'right', color: '#9CA3AF', fontSize: 13, marginTop: 4 },
+  error: {
+    color: '#DC2626',
+    fontSize: 14,
+    marginBottom: 8,
+    position: 'absolute',
+    bottom: 0,
+    left: 20,
+  },
   postBtn: {
     backgroundColor: '#111827',
-    padding: 12,
     borderRadius: 12,
-    marginHorizontal: 16,
+    paddingVertical: 15,
+    alignItems: 'center',
+    marginHorizontal: 20,
   },
   postBtnText: {
     color: '#fff',

@@ -12,14 +12,14 @@ import {
 import { router } from 'expo-router';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Post } from '@/types/models';
+import { TPostCard } from '@/types/models';
 import { getPosts } from '@/services/post.service';
 import { useAuth } from '@/context/AuthContext';
 import PostCard from '@/components/PostCard';
 
 export default function FeedScreen() {
   const { user, logout } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<TPostCard[]>([]);
   const [filter, setFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

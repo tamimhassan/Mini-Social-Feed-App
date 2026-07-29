@@ -1,189 +1,136 @@
-import { Post, Comment } from '../types/models';
-
-const USE_MOCK = true;
-const MOCK_DELAY = 500;
+import { apiClient } from './api';
+import { TPostCard, TComment, TPostDetail } from '../types/models';
 
 export class PostError extends Error {}
 
-// in-memory mock "database" — resets on app reload
-let mockPosts: Post[] = [
-  {
-    id: 'p1',
-    authorId: 'u1',
-    username: 'sarah_dev',
-    text: 'Just shipped my first React Native app! 🎉',
-    likeCount: 12,
-    likedByMe: false,
-    comments: [
-      {
-        id: 'c1',
-        userId: 'u2',
-        username: 'mike_codes',
-        text: 'Congrats!',
-        createdAt: new Date(Date.now() - 3600000).toISOString(),
-      },
-    ],
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: 'p2',
-    authorId: 'u2',
-    username: 'mike_codes',
-    text: 'Anyone else debugging Reanimated for 3 hours straight?',
-    likeCount: 8,
-    likedByMe: true,
-    comments: [],
-    createdAt: new Date(Date.now() - 5400000).toISOString(),
-  },
-  {
-    id: 'p3',
-    authorId: 'u3',
-    username: 'jane_ux',
-    text: 'Small UI polish makes a huge difference. Details matter.',
-    likeCount: 24,
-    likedByMe: false,
-    comments: [
-      {
-        id: 'c2',
-        userId: 'u1',
-        username: 'sarah_dev',
-        text: 'So true',
-        createdAt: new Date(Date.now() - 1800000).toISOString(),
-      },
-      {
-        id: 'c3',
-        userId: 'u4',
-        username: 'alex_pm',
-        text: 'Agreed 100%',
-        createdAt: new Date(Date.now() - 900000).toISOString(),
-      },
-    ],
-    createdAt: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: 'p4',
-    authorId: 'u4',
-    username: 'alex_pm',
-    text: 'Sprint planning done. Onwards!',
-    likeCount: 3,
-    likedByMe: false,
-    comments: [],
-    createdAt: new Date(Date.now() - 1800000).toISOString(),
-  },
-];
+interface PostsResponse {
+  posts: TPostCard[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNextPage: boolean;
+  };
+}
 
-const PAGE_SIZE = 10;
+interface CommentsResponse {
+  comments: TComment[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
 
 export interface PaginatedPosts {
-  posts: Post[];
+  posts: TPostCard[];
   nextCursor: string | null;
 }
+
+const PAGE_SIZE = 10;
 
 export async function getPosts(
   cursor: string | null = null,
   username?: string,
 ): Promise<PaginatedPosts> {
-  if (USE_MOCK) {
-    await new Promise((r) => setTimeout(r, MOCK_DELAY));
-    let filtered = username
-      ? mockPosts.filter((p) =>
-          p.username.toLowerCase().includes(username.toLowerCase()),
-        )
-      : mockPosts;
-
-    const sorted = [...filtered].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  const page = cursor ? parseInt(cursor, 10) : 1;
+  try {
+    const { data } = await apiClient.get<PostsResponse>('/posts', {
+      params: { page, limit: PAGE_SIZE, username: username || undefined },
+    });
+    return {
+      posts: data.posts,
+      nextCursor: data.pagination.hasNextPage ? String(page + 1) : null,
+    };
+  } catch (err) {
+    throw new PostError(
+      err instanceof Error ? err.message : 'Failed to load posts',
     );
-
-    const startIndex = cursor
-      ? sorted.findIndex((p) => p.id === cursor) + 1
-      : 0;
-    const page = sorted.slice(startIndex, startIndex + PAGE_SIZE);
-    const nextCursor =
-      startIndex + PAGE_SIZE < sorted.length
-        ? (page[page.length - 1]?.id ?? null)
-        : null;
-
-    return { posts: page, nextCursor };
   }
-  // TODO: real call
-  // const { data } = await apiClient.get('/posts', { params: { cursor, username } });
-  // return data;
-  throw new PostError('Not implemented');
 }
 
 export async function createPost(
   text: string,
-  authorId: string,
-  username: string,
-): Promise<Post> {
-  if (USE_MOCK) {
-    await new Promise((r) => setTimeout(r, MOCK_DELAY));
-    if (!text.trim()) throw new PostError('Post cannot be empty');
-    const newPost: Post = {
-      id: 'p' + Date.now(),
-      authorId,
-      username,
-      text: text.trim(),
-      likeCount: 0,
-      likedByMe: false,
-      comments: [],
-      createdAt: new Date().toISOString(),
-    };
-    mockPosts = [newPost, ...mockPosts];
-    return newPost;
+  _authorId: string,
+  _username: string,
+): Promise<TPostCard> {
+  try {
+    const { data } = await apiClient.post<{ post: TPostCard }>('/posts', {
+      content: text,
+    });
+    return data.post;
+  } catch (err) {
+    throw new PostError(
+      err instanceof Error ? err.message : 'Failed to create post',
+    );
   }
-  // TODO: real call to POST /posts
-  throw new PostError('Not implemented');
 }
 
 export async function toggleLike(
   postId: string,
 ): Promise<{ likeCount: number; likedByMe: boolean }> {
-  if (USE_MOCK) {
-    await new Promise((r) => setTimeout(r, 250));
-    const post = mockPosts.find((p) => p.id === postId);
-    if (!post) throw new PostError('Post not found');
-    post.likedByMe = !post.likedByMe;
-    post.likeCount += post.likedByMe ? 1 : -1;
-    return { likeCount: post.likeCount, likedByMe: post.likedByMe };
+  try {
+    const { data } = await apiClient.post<{
+      liked: boolean;
+      likeCount: number;
+    }>(`/posts/${postId}/like`);
+    return { likeCount: data.likeCount, likedByMe: data.liked };
+  } catch (err) {
+    throw new PostError(
+      err instanceof Error ? err.message : 'Failed to update like',
+    );
   }
-  // TODO: real call to POST /posts/:id/like
-  throw new PostError('Not implemented');
 }
 
 export async function addComment(
   postId: string,
   text: string,
-  userId: string,
-  username: string,
-): Promise<Comment> {
-  if (USE_MOCK) {
-    await new Promise((r) => setTimeout(r, MOCK_DELAY));
-    if (!text.trim()) throw new PostError('Comment cannot be empty');
-    const post = mockPosts.find((p) => p.id === postId);
-    if (!post) throw new PostError('Post not found');
-    const newComment: Comment = {
-      id: 'c' + Date.now(),
-      userId,
-      username,
-      text: text.trim(),
-      createdAt: new Date().toISOString(),
-    };
-    post.comments = [...post.comments, newComment];
-    return newComment;
+  _userId: string,
+  _username: string,
+): Promise<TComment> {
+  try {
+    const { data } = await apiClient.post<{ comment: TComment }>(
+      `/posts/${postId}/comment`,
+      {
+        content: text,
+      },
+    );
+    return data.comment;
+  } catch (err) {
+    throw new PostError(
+      err instanceof Error ? err.message : 'Failed to add comment',
+    );
   }
-  // TODO: real call to POST /posts/:id/comment
-  throw new PostError('Not implemented');
 }
 
-export async function getPostById(postId: string): Promise<Post> {
-  if (USE_MOCK) {
-    await new Promise((r) => setTimeout(r, 300));
-    const post = mockPosts.find((p) => p.id === postId);
-    if (!post) throw new PostError('Post not found');
+export async function getPostById(postId: string): Promise<TPostDetail> {
+  try {
+    const { data } = await apiClient.get<{ post: TPostCard }>(
+      `/posts/${postId}`,
+    );
+    const post: TPostDetail = { ...data.post, comments: [] };
+    // Post detail needs the actual comment list, not just commentCount — fetch it separately
+    post.comments = await getComments(postId);
     return post;
+  } catch (err) {
+    throw new PostError(err instanceof Error ? err.message : 'Post not found');
   }
-  throw new PostError('Not implemented');
+}
+
+export async function getComments(postId: string): Promise<TComment[]> {
+  try {
+    const { data } = await apiClient.get<CommentsResponse>(
+      `/posts/${postId}/comments`,
+      {
+        params: { limit: 100 },
+      },
+    );
+    return data.comments;
+  } catch (err) {
+    throw new PostError(
+      err instanceof Error ? err.message : 'Failed to load comments',
+    );
+  }
 }

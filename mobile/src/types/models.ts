@@ -1,26 +1,28 @@
-export interface User {
+export type User = {
   id: string;
-  name: string;
+  username: string;
   email: string;
-  username: string;
-  fcmToken?: string | null;
-}
-
-export interface Comment {
-  id: string;
-  userId: string;
-  username: string;
-  text: string;
   createdAt: string;
-}
+  fcmToken?: string | null;
+};
 
-export interface Post {
+export type TComment = {
   id: string;
-  authorId: string;
-  username: string;
-  text: string;
+  user: User;
+  content: string;
+  createdAt: string;
+};
+
+export type TPostCard = {
+  id: string;
+  content: string;
+  createdAt: string;
+  author: User;
   likeCount: number;
   likedByMe: boolean;
-  comments: Comment[];
-  createdAt: string;
-}
+  commentCount: number;
+};
+
+export type TPostDetail = TPostCard & {
+  comments: TComment[];
+};

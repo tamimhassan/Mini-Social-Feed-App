@@ -1,12 +1,11 @@
 {
   "name": "mini-social-feed-backend",
   "version": "1.0.0",
-  "description": "Backend API for Mini Social Feed App - Node.js, Express, Prisma, PostgreSQL, Firebase Cloud Messaging (TypeScript, strict mode)",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "type": "commonjs",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "typecheck": "tsc --noEmit",
     "prisma:generate": "prisma generate",
@@ -15,7 +14,6 @@
     "prisma:studio": "prisma studio",
     "seed": "ts-node prisma/seed.ts"
   },
-  "keywords": ["social-feed", "express", "prisma", "postgresql", "fcm", "typescript"],
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.19.1",

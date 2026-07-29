@@ -1,9 +1,14 @@
-import { Request, Response } from "express";
-import bcrypt from "bcryptjs";
-import prisma from "../config/prisma";
-import { signToken } from "../utils/jwt";
+import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import prisma from '../config/prisma';
+import { signToken } from '../utils/jwt';
 
-const PUBLIC_USER_FIELDS = { id: true, username: true, email: true, createdAt: true } as const;
+const PUBLIC_USER_FIELDS = {
+  id: true,
+  username: true,
+  email: true,
+  createdAt: true,
+} as const;
 
 interface SignupBody {
   username: string;
@@ -14,22 +19,26 @@ interface SignupBody {
 interface LoginBody {
   email: string;
   password: string;
-  fcmToken?: string;
 }
 
 interface FcmTokenBody {
   fcmToken: string;
 }
 
-async function signup(req: Request<unknown, unknown, SignupBody>, res: Response): Promise<void> {
+async function signup(
+  req: Request<unknown, unknown, SignupBody>,
+  res: Response,
+): Promise<void> {
   const { username, email, password } = req.body;
 
   const existing = await prisma.user.findFirst({
     where: { OR: [{ email }, { username }] },
   });
   if (existing) {
-    const field = existing.email === email ? "email" : "username";
-    res.status(409).json({ error: `An account with that ${field} already exists.` });
+    const field = existing.email === email ? 'email' : 'username';
+    res
+      .status(409)
+      .json({ error: `An account with that ${field} already exists.` });
     return;
   }
 
@@ -43,45 +52,51 @@ async function signup(req: Request<unknown, unknown, SignupBody>, res: Response)
   res.status(201).json({ user, token });
 }
 
-async function login(req: Request<unknown, unknown, LoginBody>, res: Response): Promise<void> {
-  const { email, password, fcmToken } = req.body;
+async function login(
+  req: Request<unknown, unknown, LoginBody>,
+  res: Response,
+): Promise<void> {
+  const { email, password } = req.body;
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
-    res.status(401).json({ error: "Invalid email or password." });
+    res.status(404).json({
+      error: 'No account found with this email. Please sign up first.',
+    });
     return;
   }
 
   const passwordMatches = await bcrypt.compare(password, user.password);
   if (!passwordMatches) {
-    res.status(401).json({ error: "Invalid email or password." });
+    res.status(401).json({ error: 'Incorrect password.' });
     return;
-  }
-
-  // Opportunistically update the FCM token on login, since the mobile app
-  // typically has a fresh token available right after auth.
-  if (fcmToken) {
-    await prisma.user.update({ where: { id: user.id }, data: { fcmToken } });
   }
 
   const token = signToken({ id: user.id, username: user.username });
   res.json({
-    user: { id: user.id, username: user.username, email: user.email, createdAt: user.createdAt },
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      createdAt: user.createdAt,
+    },
     token,
   });
 }
 
 /** Lets the mobile app register/refresh its FCM device token after login (e.g. on app open). */
-async function registerFcmToken(req: Request<unknown, unknown, FcmTokenBody>, res: Response): Promise<void> {
+async function registerFcmToken(
+  req: Request<unknown, unknown, FcmTokenBody>,
+  res: Response,
+): Promise<void> {
   const { fcmToken } = req.body;
-  // requireAuth guarantees req.user is set for this route.
   const userId = req.user!.id;
 
   await prisma.user.update({
     where: { id: userId },
     data: { fcmToken },
   });
-  res.json({ message: "FCM token registered." });
+  res.json({ message: 'FCM token registered.' });
 }
 
 async function me(req: Request, res: Response): Promise<void> {
@@ -91,7 +106,7 @@ async function me(req: Request, res: Response): Promise<void> {
     select: PUBLIC_USER_FIELDS,
   });
   if (!user) {
-    res.status(404).json({ error: "User not found." });
+    res.status(404).json({ error: 'User not found.' });
     return;
   }
   res.json({ user });

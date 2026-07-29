@@ -1,56 +1,76 @@
-# Welcome to your Expo app 👋
+# Mini Social Feed — Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native (Expo) app: auth, feed with likes/comments, post creation, push notifications.
 
-## Get started
+## Stack
 
-1. Install dependencies
+Expo Router (file-based nav), TypeScript, `react-hook-form` + `yup` (all forms), `react-native-reanimated`, `axios` (JWT auto-attached via interceptor), `expo-notifications` + `expo-device`, `AsyncStorage` (session persistence).
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Setup
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Point the app at your backend — copy `.env.example` to `.env` and set:
 
-### Other setup steps
+```env
+EXPO_PUBLIC_API_URL=http://YOUR_BACKEND_HOST:4000/api
+```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- Physical device: your machine's LAN IP (e.g. `http://192.168.1.23:4000/api`)
+- Android emulator: `http://10.0.2.2:4000/api` (also the default if `.env` is missing)
 
-## Learn more
+Changing `.env` requires a full restart with cache clear: `npx expo start -c` — a hot reload alone won't pick it up.
 
-To learn more about developing your project with Expo, look at the following resources:
+**Firebase:** add an Android app in Firebase Console (package name must match `app.json`'s `android.package`), download `google-services.json` to the project root, and confirm `app.json` references it under `android.googleServicesFile` with `"expo-notifications"` in `plugins`.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+**Run (Android):**
 
-## Join the community
+```bash
+npx expo run:android
+```
 
-Join our community of developers creating universal apps.
+Use this, not `npx expo start` alone — native modules (Reanimated, notifications) require a custom dev client, not plain Expo Go.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Architecture
+
+```
+app/
+├── _layout.tsx        # AuthProvider, gesture handler, push notification listeners
+├── (auth)/             # login, signup — redirects to feed if already logged in
+├── (app)/              # feed, create-post, post/[id] — redirects to login if not authed
+services/
+├── api.ts              # axios instance + JWT interceptor + error normalization
+├── auth.service.ts      # auth calls, maps raw API → app models
+├── post.service.ts      # posts/likes/comments, maps raw API → app models
+└── notification.service.ts
+context/AuthContext.tsx  # user/token state, session validation on launch
+utils/validation.ts      # yup schemas shared across every form
+utils/formErrors.ts      # maps backend field errors onto react-hook-form fields
+components/PostCard.tsx  # optimistic like toggle
+```
+
+**Auth:** JWT persisted in `AsyncStorage`, attached automatically by an axios interceptor. On launch, `AuthContext` re-validates the session via `GET /auth/me` rather than trusting the cached user indefinitely.
+
+**API mapping:** the backend's field names (`content`, `author.username`, page-based pagination) differ from the app's internal model (`text`, `username`, cursor-based). Each service file defines a `Raw*` type + `map*()` function — screens never see raw backend field names.
+
+**Forms:** every form uses `react-hook-form` + a `yup` schema mirroring the backend's validation rules exactly, so invalid input is caught before it hits the network. Backend field-level errors (`details[]`) are mapped back onto specific fields via `applyServerErrors()`, with anything unmapped shown as a general error.
+
+**Push notifications:** registers the raw device token (`getDevicePushTokenAsync()` — FCM, not Expo's push token) since the backend sends via `firebase-admin` directly. Token is registered right after login/signup. `app/_layout.tsx` handles foreground notifications and deep-links to the relevant post on tap.
+
+## Build APK
+
+```bash
+eas build:configure
+```
+
+Set `eas.json`'s `preview` profile to `{ "android": { "buildType": "apk" } }`, then:
+
+```bash
+eas build --platform android --profile preview
+```
+
+## Platform scope
+
+Android only — iOS push needs a paid Apple Developer account for APNs, not available for this build. Code is cross-platform already; iOS would need `GoogleService-Info.plist` + an `ios.bundleIdentifier` + APNs key upload, no JS changes.

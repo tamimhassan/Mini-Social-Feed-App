@@ -27,14 +27,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session on app launch — token itself is read by the axios
-  // interceptor directly from AsyncStorage, so we only need the user object here.
   useEffect(() => {
     (async () => {
       try {
         const storedToken = await AsyncStorage.getItem('authToken');
         if (storedToken) {
-          const freshUser = await getMe(); // throws AuthError if token expired/invalid
+          const freshUser = await getMe();
           setUser(freshUser);
           setToken(storedToken);
           await AsyncStorage.setItem(
@@ -43,7 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           );
         }
       } catch (err) {
-        // Token expired or invalid — clear it so the user is sent back to login
         await AsyncStorage.multiRemove([USER_STORAGE_KEY, 'authToken']);
         console.warn('Session restore failed, logging out:', err);
       } finally {
@@ -56,11 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(newUser);
     setToken(newToken);
     await AsyncStorage.setItem(USER_STORAGE_KEY, JSON.stringify(newUser));
-    // authToken itself is already stored by auth.service.ts's login/signup calls
 
-    // Push registration happens after auth succeeds, but must never block or
-    // break login — a denied permission or a dev-client-less Expo Go session
-    // should not prevent someone from using the app.
     try {
       const pushToken = await registerForPushNotifications();
       if (pushToken) {

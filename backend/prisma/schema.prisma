@@ -1,0 +1,69 @@
+// Prisma schema for Mini Social Feed App
+// Run `npx prisma migrate dev --name init` after configuring DATABASE_URL in .env
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  email        String    @unique
+  password     String
+  fcmToken     String?   // Firebase Cloud Messaging device token, updated on login/app open
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  posts        Post[]
+  likes        Like[]
+  comments     Comment[]
+
+  @@map("users")
+}
+
+model Post {
+  id          String     @id @default(uuid())
+  content     String
+  authorId    String
+  author      User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  likes       Like[]
+  comments    Comment[]
+
+  @@index([createdAt])
+  @@index([authorId])
+  @@map("posts")
+}
+
+model Like {
+  id         String    @id @default(uuid())
+  postId     String
+  userId     String
+  post       Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+
+  // A user can only like a given post once (a repeat call toggles it off - see likes controller)
+  @@unique([postId, userId])
+  @@map("likes")
+}
+
+model Comment {
+  id         String    @id @default(uuid())
+  postId     String
+  userId     String
+  content    String
+  post       Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+
+  @@index([postId])
+  @@map("comments")
+}

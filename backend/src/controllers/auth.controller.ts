@@ -25,6 +25,7 @@ interface FcmTokenBody {
   fcmToken: string;
 }
 
+/** POST /auth/signup */
 async function signup(
   req: Request<unknown, unknown, SignupBody>,
   res: Response,
@@ -52,6 +53,7 @@ async function signup(
   res.status(201).json({ user, token });
 }
 
+/** POST /auth/login */
 async function login(
   req: Request<unknown, unknown, LoginBody>,
   res: Response,
@@ -84,7 +86,7 @@ async function login(
   });
 }
 
-/** Lets the mobile app register/refresh its FCM device token after login (e.g. on app open). */
+/** Lets the mobile app register/refresh its FCM device token after login */
 async function registerFcmToken(
   req: Request<unknown, unknown, FcmTokenBody>,
   res: Response,

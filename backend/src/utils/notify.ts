@@ -7,11 +7,6 @@ export interface SendPushNotificationArgs {
   data?: Record<string, string | number>;
 }
 
-/**
- * Sends an FCM push notification to a single device token.
- * Silently no-ops (with a log) if Firebase isn't configured or the user has no token,
- * so notification delivery never blocks or breaks the core like/comment API response.
- */
 async function sendPushNotification({
   token,
   title,
@@ -31,12 +26,10 @@ async function sendPushNotification({
       token,
       notification: { title, body },
       data: Object.fromEntries(
-        // FCM data payloads must be string -> string
         Object.entries(data).map(([k, v]) => [k, String(v)]),
       ),
     });
   } catch (err) {
-    // Common cause: stale/invalid token (app uninstalled, token rotated). Log and move on.
     console.error(
       `[notify] Failed to send push notification: ${(err as Error).message}`,
     );

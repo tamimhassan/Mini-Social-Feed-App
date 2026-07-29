@@ -2,9 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../config/prisma';
 import { sendPushNotification } from '../utils/notify';
 
-/**
- * POST /posts/:id/like
- */
+/** POST /posts/:id/like */
 async function toggleLike(
   req: Request<{ id: string }>,
   res: Response,

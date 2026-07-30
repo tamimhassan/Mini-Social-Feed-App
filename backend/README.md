@@ -35,6 +35,7 @@ npm run dev
 ```
 
 Health check: `GET /health`
+Production check: `[https://mini-social-feed-app-api.onrender.com/health](https://mini-social-feed-app-api.onrender.com/health)`
 
 ## API Reference
 

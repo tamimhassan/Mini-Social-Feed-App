@@ -15,11 +15,8 @@ npm install
 Point the app at your backend — copy `.env.example` to `.env` and set:
 
 ```env
-EXPO_PUBLIC_API_URL=http://YOUR_BACKEND_HOST:4000/api
+EXPO_PUBLIC_API_URL=https://mini-social-feed-app-api.onrender.com/api
 ```
-
-- Physical device: your machine's LAN IP (e.g. `http://192.168.1.23:4000/api`)
-- Android emulator: `http://10.0.2.2:4000/api` (also the default if `.env` is missing)
 
 Changing `.env` requires a full restart with cache clear: `npx expo start -c` — a hot reload alone won't pick it up.
 
@@ -53,9 +50,9 @@ components/PostCard.tsx  # optimistic like toggle
 
 **Auth:** JWT persisted in `AsyncStorage`, attached automatically by an axios interceptor. On launch, `AuthContext` re-validates the session via `GET /auth/me` rather than trusting the cached user indefinitely.
 
-**API mapping:** the backend's field names (`content`, `author.username`, page-based pagination) differ from the app's internal model (`text`, `username`, cursor-based). Each service file defines a `Raw*` type + `map*()` function — screens never see raw backend field names.
+**API mapping:** the backend's field names (`content`, `author.username`, page-based pagination)
 
-**Forms:** every form uses `react-hook-form` + a `yup` schema mirroring the backend's validation rules exactly, so invalid input is caught before it hits the network. Backend field-level errors (`details[]`) are mapped back onto specific fields via `applyServerErrors()`, with anything unmapped shown as a general error.
+**Forms:** every form uses `react-hook-form` + a `yup` schema mirroring the backend's validation rules exactly, so invalid input is caught before it hits the network.
 
 **Push notifications:** registers the raw device token (`getDevicePushTokenAsync()` — FCM, not Expo's push token) since the backend sends via `firebase-admin` directly. Token is registered right after login/signup. `app/_layout.tsx` handles foreground notifications and deep-links to the relevant post on tap.
 

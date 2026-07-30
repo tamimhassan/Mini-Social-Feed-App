@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,13 @@ import {
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { TPostCard } from '@/types/models';
@@ -30,6 +36,10 @@ export default function FeedScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const fabScale = useSharedValue(1);
+  const fabAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: fabScale.value }],
+  }));
 
   const loadFeed = useCallback(async (username: string, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -51,6 +61,8 @@ export default function FeedScreen() {
     }
   }, []);
 
+  const isFirstFilterRun = useRef(true);
+
   useFocusEffect(
     useCallback(() => {
       loadFeed(filter);
@@ -58,7 +70,12 @@ export default function FeedScreen() {
   );
 
   // debounce the username filter so we don't re-fetch every keystroke
+  // (skip the first run — useFocusEffect above already loads on mount/focus)
   useEffect(() => {
+    if (isFirstFilterRun.current) {
+      isFirstFilterRun.current = false;
+      return;
+    }
     const timeout = setTimeout(() => {
       loadFeed(filter);
     }, 500);
@@ -91,7 +108,7 @@ export default function FeedScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+      <Animated.View entering={FadeIn.duration(300)} style={styles.header}>
         <View>
           <Text style={styles.title}>Feed</Text>
           <Text style={styles.greeting}>Hi, {user?.username} 👋</Text>
@@ -103,9 +120,12 @@ export default function FeedScreen() {
         >
           <Ionicons name='log-out-outline' size={18} color='#DC2626' />
         </Pressable>
-      </View>
+      </Animated.View>
 
-      <View style={styles.searchWrap}>
+      <Animated.View
+        entering={FadeInDown.duration(300).delay(80)}
+        style={styles.searchWrap}
+      >
         <Ionicons
           name='search-outline'
           size={18}
@@ -120,7 +140,7 @@ export default function FeedScreen() {
           onChangeText={setFilter}
           autoCapitalize='none'
         />
-      </View>
+      </Animated.View>
 
       {loading ? (
         <View style={styles.centered}>
@@ -141,7 +161,9 @@ export default function FeedScreen() {
         <FlatList
           data={posts}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <PostCard post={item} />}
+          renderItem={({ item, index }) => (
+            <PostCard post={item} index={index} />
+          )}
           contentContainerStyle={{ paddingTop: 4, paddingBottom: 140 }}
           removeClippedSubviews={Platform.OS === 'android'}
           refreshControl={
@@ -168,12 +190,22 @@ export default function FeedScreen() {
         pointerEvents='none'
       />
 
-      <Pressable
-        style={styles.fab}
-        onPress={() => router.push('/(app)/create-post')}
+      <Animated.View
+        style={[styles.fabWrap, fabAnimatedStyle]}
       >
-        <Text style={styles.fabText}>+</Text>
-      </Pressable>
+        <Pressable
+          style={styles.fab}
+          onPress={() => router.push('/(app)/create-post')}
+          onPressIn={() => {
+            fabScale.value = withSpring(0.88, { duration: 100 });
+          }}
+          onPressOut={() => {
+            fabScale.value = withSpring(1, { duration: 150 });
+          }}
+        >
+          <Text style={styles.fabText}>+</Text>
+        </Pressable>
+      </Animated.View>
     </SafeAreaView>
   );
 }
@@ -244,10 +276,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: 100,
   },
-  fab: {
+  fabWrap: {
     position: 'absolute',
     bottom: 28,
     right: 24,
+  },
+  fab: {
     width: 58,
     height: 58,
     borderRadius: 29,

@@ -13,7 +13,13 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { TPostDetail } from '@/types/models';
@@ -31,6 +37,10 @@ export default function PostDetailScreen() {
   const [serverError, setServerError] = useState<string | null>(null);
 
   const commentInputRef = useRef<TextInput>(null);
+  const sendScale = useSharedValue(1);
+  const sendAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: sendScale.value }],
+  }));
 
   const {
     control,
@@ -119,8 +129,14 @@ export default function PostDetailScreen() {
                 </View>
               </>
             }
-            renderItem={({ item }) => (
-              <Animated.View entering={FadeIn} style={styles.commentRow}>
+            renderItem={({ item, index }) => (
+              <Animated.View
+                entering={FadeInDown.duration(300)
+                  .delay(Math.min(index, 8) * 50)
+                  .springify()
+                  .damping(16)}
+                style={styles.commentRow}
+              >
                 <View style={styles.commentAvatar}>
                   <Text style={styles.commentAvatarText}>
                     {item.user.username.charAt(0).toUpperCase()}
@@ -135,7 +151,10 @@ export default function PostDetailScreen() {
               </Animated.View>
             )}
             ListEmptyComponent={
-              <View style={styles.emptyWrap}>
+              <Animated.View
+                entering={FadeInDown.duration(400).springify().damping(14)}
+                style={styles.emptyWrap}
+              >
                 <View style={styles.emptyCircle}>
                   <Text style={[styles.sparkle, styles.sparkleTopLeft]}>✦</Text>
                   <Text style={[styles.sparkle, styles.sparkleTopRight]}>
@@ -157,7 +176,7 @@ export default function PostDetailScreen() {
                 <Text style={styles.emptySubtitle}>
                   Be the first to leave a comment.
                 </Text>
-              </View>
+              </Animated.View>
             }
             contentContainerStyle={{ paddingBottom: 20 }}
           />
@@ -183,22 +202,37 @@ export default function PostDetailScreen() {
                 )}
               />
             </View>
-            <Pressable
-              style={[styles.sendBtn, isSubmitting && styles.sendBtnDisabled]}
-              onPress={handleSubmit(onSubmitComment)}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size='small' color='#fff' />
-              ) : (
-                <Text style={styles.sendText}>Send</Text>
-              )}
-            </Pressable>
+            <Animated.View style={sendAnimatedStyle}>
+              <Pressable
+                style={[
+                  styles.sendBtn,
+                  isSubmitting && styles.sendBtnDisabled,
+                ]}
+                onPress={handleSubmit(onSubmitComment)}
+                onPressIn={() => {
+                  if (!isSubmitting)
+                    sendScale.value = withSpring(0.92, { duration: 100 });
+                }}
+                onPressOut={() => {
+                  sendScale.value = withSpring(1, { duration: 150 });
+                }}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size='small' color='#fff' />
+                ) : (
+                  <Text style={styles.sendText}>Send</Text>
+                )}
+              </Pressable>
+            </Animated.View>
           </View>
           {(errors.text || serverError) && (
-            <Text style={styles.inlineError}>
+            <Animated.Text
+              entering={FadeIn.duration(200)}
+              style={styles.inlineError}
+            >
               {errors.text?.message ?? serverError}
-            </Text>
+            </Animated.Text>
           )}
         </View>
       </KeyboardAvoidingView>

@@ -6,6 +6,7 @@ import Animated, {
   useAnimatedStyle,
   withSpring,
   withSequence,
+  SlideInUp,
 } from 'react-native-reanimated';
 import { TPostCard } from '../types/models';
 import { toggleLike } from '../services/post.service';
@@ -19,6 +20,7 @@ interface Props {
     likeCount: number,
     likedByMe: boolean,
   ) => void;
+  index?: number;
 }
 
 function timeAgo(dateStr: string): string {
@@ -31,15 +33,19 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function PostCard({ post, onLikeChange, commentInputRef }: Props) {
+function PostCard({ post, onLikeChange, commentInputRef, index }: Props) {
   const [likedByMe, setLikedByMe] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [busy, setBusy] = useState(false);
   const scale = useSharedValue(1);
+  const cardScale = useSharedValue(1);
   const pathname = usePathname();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
+  }));
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cardScale.value }],
   }));
 
   const handleLike = async () => {
@@ -79,41 +85,60 @@ function PostCard({ post, onLikeChange, commentInputRef }: Props) {
   };
 
   return (
-    <Pressable style={styles.postCard} onPress={handleComment}>
-      <View style={styles.postHeader}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {post.author.username.charAt(0).toUpperCase()}
-          </Text>
-        </View>
-        <View>
-          <Text style={styles.username}>{post.author.username}</Text>
-          <Text style={styles.handle}>
-            @{post.author.username} · {timeAgo(post.createdAt)}
-          </Text>
-        </View>
-      </View>
+    <Animated.View
+      entering={SlideInUp.withInitialValues({ originY: 12 })
+        .duration(280)
+        .delay(Math.min(index ?? 0, 8) * 60)
+        .springify()
+        .damping(22)}
+    >
+      <Animated.View style={cardAnimatedStyle}>
+        <Pressable
+          style={styles.postCard}
+          onPress={handleComment}
+          onPressIn={() => {
+            cardScale.value = withSpring(0.98, { duration: 100 });
+          }}
+          onPressOut={() => {
+            cardScale.value = withSpring(1, { duration: 150 });
+          }}
+        >
+          <View style={styles.postHeader}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {post.author.username.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.username}>{post.author.username}</Text>
+              <Text style={styles.handle}>
+                @{post.author.username} · {timeAgo(post.createdAt)}
+              </Text>
+            </View>
+          </View>
 
-      <Text style={styles.postContent}>{post.content}</Text>
+          <Text style={styles.postContent}>{post.content}</Text>
 
-      <View style={styles.divider} />
+          <View style={styles.divider} />
 
-      <View style={styles.pillRow}>
-        <Pressable style={styles.pill} onPress={handleLike} hitSlop={8}>
-          <Animated.Text style={[styles.pillIcon, animatedStyle]}>
-            {likedByMe ? '❤️' : '🤍'}
-          </Animated.Text>
-          <Text style={styles.pillCount}>{likeCount}</Text>
-          <Text style={styles.pillLabel}>Likes</Text>
+          <View style={styles.pillRow}>
+            <Pressable style={styles.pill} onPress={handleLike} hitSlop={8}>
+              <Animated.Text style={[styles.pillIcon, animatedStyle]}>
+                {likedByMe ? '❤️' : '🤍'}
+              </Animated.Text>
+              <Text style={styles.pillCount}>{likeCount}</Text>
+              <Text style={styles.pillLabel}>Likes</Text>
+            </Pressable>
+
+            <Pressable style={styles.pill} onPress={handleComment}>
+              <Ionicons name='chatbubble-outline' size={17} color='#111827' />
+              <Text style={styles.pillCount}>{post.commentCount}</Text>
+              <Text style={styles.pillLabel}>Comments</Text>
+            </Pressable>
+          </View>
         </Pressable>
-
-        <Pressable style={styles.pill} onPress={handleComment}>
-          <Ionicons name='chatbubble-outline' size={17} color='#111827' />
-          <Text style={styles.pillCount}>{post.commentCount}</Text>
-          <Text style={styles.pillLabel}>Comments</Text>
-        </Pressable>
-      </View>
-    </Pressable>
+      </Animated.View>
+    </Animated.View>
   );
 }
 

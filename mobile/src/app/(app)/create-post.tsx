@@ -11,7 +11,13 @@ import {
   View,
 } from 'react-native';
 import { router } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { useAuth } from '@/context/AuthContext';
 import { createPost, PostError } from '@/services/post.service';
 import { CreatePostFormData, createPostSchema } from '@/utils/validation';
@@ -24,6 +30,10 @@ const POST_CONTENT_MAX_LENGTH = 2000;
 export default function CreatePostScreen() {
   const { user } = useAuth();
   const [serverError, setServerError] = useState<string | null>(null);
+  const postBtnScale = useSharedValue(1);
+  const postBtnAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: postBtnScale.value }],
+  }));
 
   const {
     control,
@@ -100,27 +110,42 @@ export default function CreatePostScreen() {
             </Text>
 
             {errors.content && (
-              <Text style={styles.error}>{errors.content.message}</Text>
+              <Animated.Text entering={FadeIn.duration(200)} style={styles.error}>
+                {errors.content.message}
+              </Animated.Text>
             )}
-            {serverError && <Text style={styles.error}>{serverError}</Text>}
+            {serverError && (
+              <Animated.Text entering={FadeIn.duration(200)} style={styles.error}>
+                {serverError}
+              </Animated.Text>
+            )}
           </Animated.View>
         </ScrollView>
 
         <View style={styles.footer}>
-          <Pressable
-            style={[
-              styles.postBtn,
-              (isSubmitting || !isValid) && styles.postBtnDisabled,
-            ]}
-            onPress={handleSubmit(onSubmit)}
-            disabled={isSubmitting || !isValid}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size='small' color='#fff' />
-            ) : (
-              <Text style={styles.postBtnText}>Post now</Text>
-            )}
-          </Pressable>
+          <Animated.View style={postBtnAnimatedStyle}>
+            <Pressable
+              style={[
+                styles.postBtn,
+                (isSubmitting || !isValid) && styles.postBtnDisabled,
+              ]}
+              onPress={handleSubmit(onSubmit)}
+              onPressIn={() => {
+                if (!isSubmitting && isValid)
+                  postBtnScale.value = withSpring(0.96, { duration: 100 });
+              }}
+              onPressOut={() => {
+                postBtnScale.value = withSpring(1, { duration: 150 });
+              }}
+              disabled={isSubmitting || !isValid}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator size='small' color='#fff' />
+              ) : (
+                <Text style={styles.postBtnText}>Post now</Text>
+              )}
+            </Pressable>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

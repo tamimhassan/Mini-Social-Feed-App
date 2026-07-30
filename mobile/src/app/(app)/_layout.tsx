@@ -15,6 +15,7 @@ export default function AppLayout() {
         headerStyle: { backgroundColor: '#F3F4F8' },
         headerShadowVisible: false,
         headerTintColor: '#111827',
+        contentStyle: { backgroundColor: '#F3F4F8' },
       }}
     >
       <Stack.Screen
@@ -22,7 +23,10 @@ export default function AppLayout() {
         options={{ headerShown: false, title: 'Feed' }}
       />
       <Stack.Screen name='create-post' options={{ title: 'Create Post' }} />
-      <Stack.Screen name='post/[id]' options={{ title: 'Post Details' }} />
+      <Stack.Screen
+        name='post/[id]'
+        options={{ title: 'Post Details', contentStyle: { backgroundColor: '#fff' } }}
+      />
     </Stack>
   );
 }

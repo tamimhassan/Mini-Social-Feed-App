@@ -11,7 +11,8 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
+import { observer } from 'mobx-react-lite';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
@@ -25,9 +26,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { TPostCard } from '@/types/models';
 import { getPosts, PostError } from '@/services/post.service';
 import { useAuth } from '@/context/AuthContext';
+import { postStore } from '@/stores/PostStore';
 import PostCard from '@/components/PostCard';
 
-export default function FeedScreen() {
+export default observer(function FeedScreen() {
   const { user, logout } = useAuth();
   const [posts, setPosts] = useState<TPostCard[]>([]);
   const [filter, setFilter] = useState('');
@@ -41,36 +43,35 @@ export default function FeedScreen() {
     transform: [{ scale: fabScale.value }],
   }));
 
-  const loadFeed = useCallback(async (username: string, isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
-    setLoadError(null);
-    try {
-      const result = await getPosts(null, username);
-      setPosts(result.posts);
-      setNextCursor(result.nextCursor);
-    } catch (err) {
-      setPosts([]);
-      setNextCursor(null);
-      setLoadError(
-        err instanceof PostError ? err.message : 'Unable to load feed',
-      );
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  const loadFeed = useCallback(
+    async (username: string, opts: { isRefresh?: boolean } = {}) => {
+      const { isRefresh = false } = opts;
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setLoadError(null);
+      try {
+        const result = await getPosts(null, username);
+        result.posts.forEach((p) => postStore.upsertPost(p));
+        setPosts(result.posts);
+        setNextCursor(result.nextCursor);
+      } catch (err) {
+        setLoadError(
+          err instanceof PostError ? err.message : 'Unable to load feed',
+        );
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    loadFeed(filter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isFirstFilterRun = useRef(true);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadFeed(filter);
-    }, [filter, loadFeed]),
-  );
-
-  // debounce the username filter so we don't re-fetch every keystroke
-  // (skip the first run — useFocusEffect above already loads on mount/focus)
   useEffect(() => {
     if (isFirstFilterRun.current) {
       isFirstFilterRun.current = false;
@@ -80,13 +81,14 @@ export default function FeedScreen() {
       loadFeed(filter);
     }, 500);
     return () => clearTimeout(timeout);
-  }, [filter]);
+  }, [filter, loadFeed]);
 
   const handleLoadMore = async () => {
     if (!nextCursor || loadingMore) return;
     setLoadingMore(true);
     try {
       const result = await getPosts(nextCursor, filter);
+      result.posts.forEach((p) => postStore.upsertPost(p));
       setPosts((prev) => [...prev, ...result.posts]);
       setNextCursor(result.nextCursor);
     } catch (err) {
@@ -162,14 +164,14 @@ export default function FeedScreen() {
           data={posts}
           keyExtractor={(item) => item.id}
           renderItem={({ item, index }) => (
-            <PostCard post={item} index={index} />
+            <PostCard postId={item.id} index={index} />
           )}
           contentContainerStyle={{ paddingTop: 4, paddingBottom: 140 }}
           removeClippedSubviews={Platform.OS === 'android'}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
-              onRefresh={() => loadFeed(filter, true)}
+              onRefresh={() => loadFeed(filter, { isRefresh: true })}
             />
           }
           onEndReached={handleLoadMore}
@@ -182,17 +184,13 @@ export default function FeedScreen() {
         />
       )}
 
-      {/* Fade the feed out behind the FAB instead of a hard cut-off:
-          transparent at the top of the gradient, solid page-color at the bottom. */}
       <LinearGradient
         colors={['rgba(243,244,248,0)', 'rgba(243,244,248,1)']}
         style={styles.bottomFade}
         pointerEvents='none'
       />
 
-      <Animated.View
-        style={[styles.fabWrap, fabAnimatedStyle]}
-      >
+      <Animated.View style={[styles.fabWrap, fabAnimatedStyle]}>
         <Pressable
           style={styles.fab}
           onPress={() => router.push('/(app)/create-post')}
@@ -208,7 +206,7 @@ export default function FeedScreen() {
       </Animated.View>
     </SafeAreaView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F3F4F8' },

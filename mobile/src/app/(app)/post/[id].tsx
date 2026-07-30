@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { observer } from 'mobx-react-lite';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, {
@@ -22,16 +23,17 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { TPostDetail } from '@/types/models';
 import { getPostById, addComment, PostError } from '@/services/post.service';
+import { TComment } from '@/types/models';
 import { useAuth } from '@/context/AuthContext';
 import { commentSchema, CommentFormData } from '@/utils/validation';
+import { postStore } from '@/stores/PostStore';
 import PostCard from '@/components/PostCard';
 
-export default function PostDetailScreen() {
+export default observer(function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
-  const [post, setPost] = useState<TPostDetail | null>(null);
+  const [comments, setComments] = useState<TComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [serverError, setServerError] = useState<string | null>(null);
@@ -56,8 +58,10 @@ export default function PostDetailScreen() {
     setLoading(true);
     setLoadError(null);
     try {
-      const result = await getPostById(id);
-      setPost(result);
+      const detail = await getPostById(id);
+      const { comments: fetchedComments, ...card } = detail;
+      postStore.upsertPost(card);
+      setComments(fetchedComments);
     } catch (err) {
       setLoadError(
         err instanceof PostError ? err.message : 'Failed to load post',
@@ -71,13 +75,21 @@ export default function PostDetailScreen() {
     load();
   }, [load]);
 
+  const post = postStore.getPost(id);
+
   const onSubmitComment = async (data: CommentFormData) => {
     if (!user || !post) return;
     setServerError(null);
     try {
-      await addComment(post.id, data.text, user.id, user.username);
+      const comment = await addComment(
+        post.id,
+        data.text,
+        user.id,
+        user.username,
+      );
+      setComments((prev) => [...prev, comment]);
+      postStore.incrementCommentCount(post.id);
       reset({ text: '' });
-      await load();
     } catch (err) {
       setServerError(
         err instanceof PostError ? err.message : 'Failed to add comment',
@@ -108,23 +120,21 @@ export default function PostDetailScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView
         style={{ flex: 1, backgroundColor: '#fff' }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
       >
         <View style={styles.listArea}>
           <FlatList
-            data={post.comments}
+            data={comments}
             keyExtractor={(c) => c.id}
             keyboardShouldPersistTaps='handled'
             ListHeaderComponent={
               <>
-                <PostCard post={post} />
+                <PostCard postId={post.id} commentInputRef={commentInputRef} />
                 <View style={styles.commentsHeaderRow}>
                   <Text style={styles.commentsTitle}>Comments</Text>
                   <View style={styles.countBadge}>
-                    <Text style={styles.countBadgeText}>
-                      {post.comments.length}
-                    </Text>
+                    <Text style={styles.countBadgeText}>{comments.length}</Text>
                   </View>
                 </View>
               </>
@@ -204,10 +214,7 @@ export default function PostDetailScreen() {
             </View>
             <Animated.View style={sendAnimatedStyle}>
               <Pressable
-                style={[
-                  styles.sendBtn,
-                  isSubmitting && styles.sendBtnDisabled,
-                ]}
+                style={[styles.sendBtn, isSubmitting && styles.sendBtnDisabled]}
                 onPress={handleSubmit(onSubmitComment)}
                 onPressIn={() => {
                   if (!isSubmitting)
@@ -238,7 +245,7 @@ export default function PostDetailScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF' },

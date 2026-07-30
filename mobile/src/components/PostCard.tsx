@@ -1,25 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, TextInput } from 'react-native';
+import { Text, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { router, usePathname } from 'expo-router';
+import { observer } from 'mobx-react-lite';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withSequence,
-  SlideInUp,
+  ZoomIn,
 } from 'react-native-reanimated';
-import { TPostCard } from '../types/models';
-import { toggleLike } from '../services/post.service';
 import { Ionicons } from '@expo/vector-icons';
+import { toggleLike } from '../services/post.service';
+import { postStore } from '../stores/PostStore';
 
 interface Props {
-  post: TPostCard;
+  postId: string;
   commentInputRef?: React.RefObject<TextInput | null>;
-  onLikeChange?: (
-    postId: string,
-    likeCount: number,
-    likedByMe: boolean,
-  ) => void;
   index?: number;
 }
 
@@ -33,9 +29,12 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-function PostCard({ post, onLikeChange, commentInputRef, index }: Props) {
-  const [likedByMe, setLikedByMe] = useState(post.likedByMe);
-  const [likeCount, setLikeCount] = useState(post.likeCount);
+const PostCard = observer(function PostCard({
+  postId,
+  commentInputRef,
+  index,
+}: Props) {
+  const post = postStore.getPost(postId);
   const [busy, setBusy] = useState(false);
   const scale = useSharedValue(1);
   const cardScale = useSharedValue(1);
@@ -48,14 +47,11 @@ function PostCard({ post, onLikeChange, commentInputRef, index }: Props) {
     transform: [{ scale: cardScale.value }],
   }));
 
+  if (!post) return null;
+
   const handleLike = async () => {
     if (busy) return;
     setBusy(true);
-
-    const prevLiked = likedByMe;
-    const prevCount = likeCount;
-    setLikedByMe(!prevLiked);
-    setLikeCount(prevCount + (!prevLiked ? 1 : -1));
 
     scale.value = withSequence(
       withSpring(1.3, { duration: 150 }),
@@ -63,14 +59,15 @@ function PostCard({ post, onLikeChange, commentInputRef, index }: Props) {
       withSpring(1, { duration: 150 }),
     );
 
+    const prevLiked = post.likedByMe;
+    const prevCount = post.likeCount;
+    postStore.setLike(post.id, !prevLiked, prevCount + (!prevLiked ? 1 : -1));
+
     try {
       const result = await toggleLike(post.id);
-      setLikedByMe(result.likedByMe);
-      setLikeCount(result.likeCount);
-      onLikeChange?.(post.id, result.likeCount, result.likedByMe);
+      postStore.setLike(post.id, result.likedByMe, result.likeCount);
     } catch {
-      setLikedByMe(prevLiked);
-      setLikeCount(prevCount);
+      postStore.setLike(post.id, prevLiked, prevCount);
     } finally {
       setBusy(false);
     }
@@ -86,11 +83,9 @@ function PostCard({ post, onLikeChange, commentInputRef, index }: Props) {
 
   return (
     <Animated.View
-      entering={SlideInUp.withInitialValues({ originY: 12 })
-        .duration(280)
-        .delay(Math.min(index ?? 0, 8) * 60)
-        .springify()
-        .damping(22)}
+      entering={ZoomIn.duration(300)
+        .delay(Math.min(index ?? 0, 8) * 50)
+        .damping(10)}
     >
       <Animated.View style={cardAnimatedStyle}>
         <Pressable
@@ -124,9 +119,9 @@ function PostCard({ post, onLikeChange, commentInputRef, index }: Props) {
           <View style={styles.pillRow}>
             <Pressable style={styles.pill} onPress={handleLike} hitSlop={8}>
               <Animated.Text style={[styles.pillIcon, animatedStyle]}>
-                {likedByMe ? '❤️' : '🤍'}
+                {post.likedByMe ? '❤️' : '🤍'}
               </Animated.Text>
-              <Text style={styles.pillCount}>{likeCount}</Text>
+              <Text style={styles.pillCount}>{post.likeCount}</Text>
               <Text style={styles.pillLabel}>Likes</Text>
             </Pressable>
 
@@ -140,7 +135,7 @@ function PostCard({ post, onLikeChange, commentInputRef, index }: Props) {
       </Animated.View>
     </Animated.View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   postCard: {

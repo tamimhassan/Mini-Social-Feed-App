@@ -15,8 +15,8 @@ mini-social-app/
 
 - Backend setup & API docs: [`backend/README.md`](./backend/README.md)
 - Mobile setup & app docs: [`mobile/README.md`](./mobile/README.md)
-- Downloadable APK: **[Google Drive link — add here]**
-- GitHub repo: **[add here]**
+- Downloadable APK: [Google Drive link](https://drive.google.com/drive/folders/1tZXWJVu8XjKpFHl70bu9q9mzv4HqwxuX?usp=sharing)
+- GitHub repo: [Repo](https://github.com/tamimhassan/Mini-Social-Feed-App)
 
 ## Tech stack
 

@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
   ActivityIndicator,
   Keyboard,
@@ -47,80 +48,91 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
     >
-      <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>Log in to see your feed</Text>
-      </Animated.View>
-
-      <Animated.View
-        entering={FadeInUp.duration(500).delay(150)}
-        style={styles.form}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps='handled'
+        showsVerticalScrollIndicator={false}
       >
-        <Controller
-          control={control}
-          name='email'
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              style={[styles.input, errors.email && styles.inputError]}
-              placeholder='Email'
-              placeholderTextColor='#9CA3AF'
-              autoCapitalize='none'
-              autoCorrect={false}
-              keyboardType='email-address'
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-            />
-          )}
-        />
-        {errors.email && (
-          <Text style={styles.error}>{errors.email.message}</Text>
-        )}
-
-        <Controller
-          control={control}
-          name='password'
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              style={[styles.input, errors.password && styles.inputError]}
-              placeholder='Password'
-              placeholderTextColor='#9CA3AF'
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-            />
-          )}
-        />
-        {errors.password && (
-          <Text style={styles.error}>{errors.password.message}</Text>
-        )}
-
-        {serverError && <Text style={styles.error}>{serverError}</Text>}
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={handleSubmit(onSubmit)}
-          disabled={isSubmitting}
+        <Animated.View
+          entering={FadeInDown.duration(500)}
+          style={styles.header}
         >
-          {isSubmitting ? (
-            <ActivityIndicator color='#fff' />
-          ) : (
-            <Text style={styles.buttonText}>Log In</Text>
-          )}
-        </Pressable>
+          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.subtitle}>Log in to see your feed</Text>
+        </Animated.View>
 
-        <Link href='/(auth)/signup' style={styles.link}>
-          <Text style={styles.linkText}>
-            Don't have an account? <Text style={styles.linkBold}>Sign up</Text>
-          </Text>
-        </Link>
-      </Animated.View>
+        <Animated.View
+          entering={FadeInUp.duration(500).delay(150)}
+          style={styles.form}
+        >
+          <Controller
+            control={control}
+            name='email'
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                style={[styles.input, errors.email && styles.inputError]}
+                placeholder='Email'
+                placeholderTextColor='#9CA3AF'
+                autoCapitalize='none'
+                autoCorrect={false}
+                keyboardType='email-address'
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            )}
+          />
+          {errors.email && (
+            <Text style={styles.error}>{errors.email.message}</Text>
+          )}
+
+          <Controller
+            control={control}
+            name='password'
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                style={[styles.input, errors.password && styles.inputError]}
+                placeholder='Password'
+                placeholderTextColor='#9CA3AF'
+                secureTextEntry
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            )}
+          />
+          {errors.password && (
+            <Text style={styles.error}>{errors.password.message}</Text>
+          )}
+
+          {serverError && <Text style={styles.error}>{serverError}</Text>}
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleSubmit(onSubmit)}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color='#fff' />
+            ) : (
+              <Text style={styles.buttonText}>Log In</Text>
+            )}
+          </Pressable>
+
+          <Link href='/(auth)/signup' style={styles.link}>
+            <Text style={styles.linkText}>
+              Don't have an account?{' '}
+              <Text style={styles.linkBold}>Sign up</Text>
+            </Text>
+          </Link>
+        </Animated.View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -129,6 +141,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },
@@ -143,6 +158,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
+    color: '#111827',
     backgroundColor: '#F9FAFB',
     marginTop: 8,
   },

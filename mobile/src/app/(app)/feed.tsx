@@ -8,10 +8,14 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Platform,
+  Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { TPostCard } from '@/types/models';
 import { getPosts, PostError } from '@/services/post.service';
 import { useAuth } from '@/context/AuthContext';
@@ -47,9 +51,11 @@ export default function FeedScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    loadFeed(filter);
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadFeed(filter);
+    }, [filter, loadFeed]),
+  );
 
   // debounce the username filter so we don't re-fetch every keystroke
   useEffect(() => {
@@ -67,7 +73,6 @@ export default function FeedScreen() {
       setPosts((prev) => [...prev, ...result.posts]);
       setNextCursor(result.nextCursor);
     } catch (err) {
-      // Don't clear existing posts on a "load more" failure — just stop paginating
       console.warn(
         'Failed to load more posts:',
         err instanceof Error ? err.message : err,
@@ -77,19 +82,36 @@ export default function FeedScreen() {
     }
   };
 
+  const handleLogoutPress = () => {
+    Alert.alert('Log out?', "You'll need to log in again to see your feed.", [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log out', style: 'destructive', onPress: logout },
+    ]);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Feed</Text>
-          <Text style={styles.greeting}>Hi, {user?.username}</Text>
+          <Text style={styles.greeting}>Hi, {user?.username} 👋</Text>
         </View>
-        <Pressable onPress={logout} hitSlop={8}>
-          <Text style={styles.logout}>Log out</Text>
+        <Pressable
+          onPress={handleLogoutPress}
+          hitSlop={8}
+          style={styles.logoutBtn}
+        >
+          <Ionicons name='log-out-outline' size={18} color='#DC2626' />
         </Pressable>
       </View>
 
       <View style={styles.searchWrap}>
+        <Ionicons
+          name='search-outline'
+          size={18}
+          color='#9CA3AF'
+          style={styles.searchIcon}
+        />
         <TextInput
           style={styles.search}
           placeholder='Filter by username...'
@@ -120,7 +142,8 @@ export default function FeedScreen() {
           data={posts}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => <PostCard post={item} />}
-          contentContainerStyle={{ paddingVertical: 8, paddingBottom: 100 }}
+          contentContainerStyle={{ paddingTop: 4, paddingBottom: 140 }}
+          removeClippedSubviews={Platform.OS === 'android'}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -137,6 +160,14 @@ export default function FeedScreen() {
         />
       )}
 
+      {/* Fade the feed out behind the FAB instead of a hard cut-off:
+          transparent at the top of the gradient, solid page-color at the bottom. */}
+      <LinearGradient
+        colors={['rgba(243,244,248,0)', 'rgba(243,244,248,1)']}
+        style={styles.bottomFade}
+        pointerEvents='none'
+      />
+
       <Pressable
         style={styles.fab}
         onPress={() => router.push('/(app)/create-post')}
@@ -148,7 +179,7 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { flex: 1, backgroundColor: '#F3F4F8' },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -159,16 +190,33 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 26, fontWeight: '700', color: '#111827' },
   greeting: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  logout: { fontSize: 14, color: '#DC2626', fontWeight: '500' },
-  searchWrap: { paddingHorizontal: 20, marginBottom: 4 },
-  search: {
+  logoutBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E5E7EB',
+  },
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 8,
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  searchIcon: { marginRight: 8 },
+  search: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#111827',
   },
   centered: {
     flex: 1,
@@ -189,6 +237,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   retryText: { color: '#fff', fontWeight: '600' },
+  bottomFade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 100,
+  },
   fab: {
     position: 'absolute',
     bottom: 28,

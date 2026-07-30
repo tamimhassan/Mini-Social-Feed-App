@@ -5,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
   ActivityIndicator,
   Keyboard,
@@ -60,122 +61,133 @@ export default function SignupScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
     >
-      <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
-        <Text style={styles.title}>Create account</Text>
-        <Text style={styles.subtitle}>Join and start posting</Text>
-      </Animated.View>
-
-      <Animated.View
-        entering={FadeInUp.duration(500).delay(150)}
-        style={styles.form}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps='handled'
+        showsVerticalScrollIndicator={false}
       >
-        <Controller
-          control={control}
-          name='username'
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              style={[styles.input, errors.username && styles.inputError]}
-              placeholder='Username'
-              placeholderTextColor='#9CA3AF'
-              autoCapitalize='none'
-              autoCorrect={false}
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-            />
-          )}
-        />
-        {errors.username && (
-          <Text style={styles.error}>{errors.username.message}</Text>
-        )}
-
-        <Controller
-          control={control}
-          name='email'
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              style={[styles.input, errors.email && styles.inputError]}
-              placeholder='Email'
-              placeholderTextColor='#9CA3AF'
-              autoCapitalize='none'
-              autoCorrect={false}
-              keyboardType='email-address'
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-            />
-          )}
-        />
-        {errors.email && (
-          <Text style={styles.error}>{errors.email.message}</Text>
-        )}
-
-        <Controller
-          control={control}
-          name='password'
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              style={[styles.input, errors.password && styles.inputError]}
-              placeholder='Password'
-              placeholderTextColor='#9CA3AF'
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-            />
-          )}
-        />
-        {errors.password && (
-          <Text style={styles.error}>{errors.password.message}</Text>
-        )}
-
-        <Controller
-          control={control}
-          name='confirmPassword'
-          render={({ field: { onChange, onBlur, value } }) => (
-            <TextInput
-              style={[
-                styles.input,
-                errors.confirmPassword && styles.inputError,
-              ]}
-              placeholder='Confirm password'
-              placeholderTextColor='#9CA3AF'
-              secureTextEntry
-              value={value}
-              onChangeText={onChange}
-              onBlur={onBlur}
-            />
-          )}
-        />
-        {errors.confirmPassword && (
-          <Text style={styles.error}>{errors.confirmPassword.message}</Text>
-        )}
-
-        {serverError && <Text style={styles.error}>{serverError}</Text>}
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={handleSubmit(onSubmit)}
-          disabled={isSubmitting}
+        <Animated.View
+          entering={FadeInDown.duration(500)}
+          style={styles.header}
         >
-          {isSubmitting ? (
-            <ActivityIndicator color='#fff' />
-          ) : (
-            <Text style={styles.buttonText}>Sign Up</Text>
-          )}
-        </Pressable>
+          <Text style={styles.title}>Create account</Text>
+          <Text style={styles.subtitle}>Join and start posting</Text>
+        </Animated.View>
 
-        <Link href='/(auth)/login' style={styles.link}>
-          <Text style={styles.linkText}>
-            Already have an account? <Text style={styles.linkBold}>Log in</Text>
-          </Text>
-        </Link>
-      </Animated.View>
+        <Animated.View
+          entering={FadeInUp.duration(500).delay(150)}
+          style={styles.form}
+        >
+          <Controller
+            control={control}
+            name='username'
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                style={[styles.input, errors.username && styles.inputError]}
+                placeholder='Username'
+                placeholderTextColor='#9CA3AF'
+                autoCapitalize='none'
+                autoCorrect={false}
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            )}
+          />
+          {errors.username && (
+            <Text style={styles.error}>{errors.username.message}</Text>
+          )}
+
+          <Controller
+            control={control}
+            name='email'
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                style={[styles.input, errors.email && styles.inputError]}
+                placeholder='Email'
+                placeholderTextColor='#9CA3AF'
+                autoCapitalize='none'
+                autoCorrect={false}
+                keyboardType='email-address'
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            )}
+          />
+          {errors.email && (
+            <Text style={styles.error}>{errors.email.message}</Text>
+          )}
+
+          <Controller
+            control={control}
+            name='password'
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                style={[styles.input, errors.password && styles.inputError]}
+                placeholder='Password'
+                placeholderTextColor='#9CA3AF'
+                secureTextEntry
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            )}
+          />
+          {errors.password && (
+            <Text style={styles.error}>{errors.password.message}</Text>
+          )}
+
+          <Controller
+            control={control}
+            name='confirmPassword'
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                style={[
+                  styles.input,
+                  errors.confirmPassword && styles.inputError,
+                ]}
+                placeholder='Confirm password'
+                placeholderTextColor='#9CA3AF'
+                secureTextEntry
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            )}
+          />
+          {errors.confirmPassword && (
+            <Text style={styles.error}>{errors.confirmPassword.message}</Text>
+          )}
+
+          {serverError && <Text style={styles.error}>{serverError}</Text>}
+
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleSubmit(onSubmit)}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color='#fff' />
+            ) : (
+              <Text style={styles.buttonText}>Sign Up</Text>
+            )}
+          </Pressable>
+
+          <Link href='/(auth)/login' style={styles.link}>
+            <Text style={styles.linkText}>
+              Already have an account?{' '}
+              <Text style={styles.linkBold}>Log in</Text>
+            </Text>
+          </Link>
+        </Animated.View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -184,6 +196,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
   },
@@ -198,6 +213,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
+    color: '#111827',
     backgroundColor: '#F9FAFB',
     marginTop: 8,
   },

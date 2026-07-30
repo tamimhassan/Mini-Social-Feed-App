@@ -9,7 +9,14 @@ export default function AppLayout() {
   }
 
   return (
-    <Stack screenOptions={{ headerTitleAlign: 'center' }}>
+    <Stack
+      screenOptions={{
+        headerTitleAlign: 'center',
+        headerStyle: { backgroundColor: '#F3F4F8' },
+        headerShadowVisible: false,
+        headerTintColor: '#111827',
+      }}
+    >
       <Stack.Screen
         name='feed'
         options={{ headerShown: false, title: 'Feed' }}

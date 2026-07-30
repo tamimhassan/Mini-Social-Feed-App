@@ -9,6 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { TPostCard } from '../types/models';
 import { toggleLike } from '../services/post.service';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Props {
   post: TPostCard;
@@ -30,11 +31,7 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-export default function PostCard({
-  post,
-  onLikeChange,
-  commentInputRef,
-}: Props) {
+function PostCard({ post, onLikeChange, commentInputRef }: Props) {
   const [likedByMe, setLikedByMe] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
   const [busy, setBusy] = useState(false);
@@ -82,8 +79,8 @@ export default function PostCard({
   };
 
   return (
-    <Pressable style={styles.card} onPress={handleComment}>
-      <View style={styles.header}>
+    <Pressable style={styles.postCard} onPress={handleComment}>
+      <View style={styles.postHeader}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
             {post.author.username.charAt(0).toUpperCase()}
@@ -91,27 +88,29 @@ export default function PostCard({
         </View>
         <View>
           <Text style={styles.username}>{post.author.username}</Text>
-          <Text style={styles.time}>{timeAgo(post.createdAt)}</Text>
+          <Text style={styles.handle}>
+            @{post.author.username} · {timeAgo(post.createdAt)}
+          </Text>
         </View>
       </View>
 
-      <Text style={styles.text}>{post.content}</Text>
+      <Text style={styles.postContent}>{post.content}</Text>
 
-      <View style={styles.footer}>
-        <Pressable style={styles.actionBtn} onPress={handleLike} hitSlop={8}>
-          <Animated.Text
-            style={[styles.icon, animatedStyle, likedByMe && styles.liked]}
-          >
+      <View style={styles.divider} />
+
+      <View style={styles.pillRow}>
+        <Pressable style={styles.pill} onPress={handleLike} hitSlop={8}>
+          <Animated.Text style={[styles.pillIcon, animatedStyle]}>
             {likedByMe ? '❤️' : '🤍'}
           </Animated.Text>
-          <Text style={[styles.actionText, likedByMe && styles.likedText]}>
-            {likeCount}
-          </Text>
+          <Text style={styles.pillCount}>{likeCount}</Text>
+          <Text style={styles.pillLabel}>Likes</Text>
         </Pressable>
 
-        <Pressable style={styles.actionBtn} onPress={handleComment} hitSlop={8}>
-          <Text style={styles.icon}>💬</Text>
-          <Text style={styles.actionText}>{post.commentCount}</Text>
+        <Pressable style={styles.pill} onPress={handleComment}>
+          <Ionicons name='chatbubble-outline' size={17} color='#111827' />
+          <Text style={styles.pillCount}>{post.commentCount}</Text>
+          <Text style={styles.pillLabel}>Comments</Text>
         </Pressable>
       </View>
     </Pressable>
@@ -119,46 +118,56 @@ export default function PostCard({
 }
 
 const styles = StyleSheet.create({
-  card: {
+  postCard: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 20,
+    padding: 20,
     marginHorizontal: 16,
-    marginVertical: 6,
+    marginTop: 16,
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
-  header: {
+  postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 16,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#111827',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  username: { fontWeight: '600', fontSize: 15, color: '#111827' },
-  time: { fontSize: 12, color: '#9CA3AF', marginTop: 1 },
-  text: { fontSize: 15, color: '#1F2937', lineHeight: 21, marginBottom: 12 },
-  footer: {
-    flexDirection: 'row',
-    gap: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    paddingTop: 10,
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 19 },
+  username: { fontWeight: '700', fontSize: 17, color: '#111827' },
+  handle: { fontSize: 13, color: '#9CA3AF', marginTop: 2 },
+  postContent: { fontSize: 17, color: '#1F2937', lineHeight: 24 },
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F2F6',
+    marginTop: 18,
+    marginBottom: 14,
   },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  icon: { fontSize: 16 },
-  liked: {},
-  actionText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
-  likedText: { color: '#DC2626' },
+  pillRow: { flexDirection: 'row', gap: 12 },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+  },
+  pillIcon: { fontSize: 15 },
+  pillCount: { fontWeight: '700', color: '#DC2626', fontSize: 14 },
+  pillLabel: { fontSize: 14, color: '#374151' },
 });
+
+export default React.memo(PostCard);

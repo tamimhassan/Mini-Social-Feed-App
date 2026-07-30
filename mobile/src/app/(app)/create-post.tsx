@@ -6,7 +6,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   KeyboardAvoidingView,
+  ScrollView,
   Platform,
+  View,
 } from 'react-native';
 import { router } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -48,103 +50,141 @@ export default function CreatePostScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['bottom']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.body}>
-          <Controller
-            control={control}
-            name='content'
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                style={styles.input}
-                placeholder="What's on your mind?"
-                placeholderTextColor='#9CA3AF'
-                multiline
-                autoFocus
-                numberOfLines={10}
-                maxLength={POST_CONTENT_MAX_LENGTH}
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-              />
-            )}
-          />
-          <Text style={styles.counter}>
-            {(contentValue ?? '').length}/{POST_CONTENT_MAX_LENGTH}
-          </Text>
-
-          {errors.content && (
-            <Text style={styles.error}>{errors.content.message}</Text>
-          )}
-          {serverError && <Text style={styles.error}>{serverError}</Text>}
-        </Animated.View>
-        <Pressable
-          style={styles.postBtn}
-          onPress={handleSubmit(onSubmit)}
-          disabled={isSubmitting || !isValid}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps='handled'
+          showsVerticalScrollIndicator={false}
         >
-          {isSubmitting ? (
-            <ActivityIndicator size='small' color='#fff' />
-          ) : (
-            <Text style={[styles.post, !isValid && styles.postDisabled]}>
-              Post now
+          <Animated.View
+            entering={FadeInDown.duration(400)}
+            style={styles.card}
+          >
+            <View style={styles.composerHeader}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {user?.username.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.postingAs}>
+                Posting as{' '}
+                <Text style={styles.postingAsBold}>{user?.username}</Text>
+              </Text>
+            </View>
+
+            <Controller
+              control={control}
+              name='content'
+              render={({ field: { onChange, onBlur, value } }) => (
+                <TextInput
+                  style={styles.input}
+                  placeholder="What's on your mind?"
+                  placeholderTextColor='#9CA3AF'
+                  multiline
+                  autoFocus
+                  numberOfLines={10}
+                  maxLength={POST_CONTENT_MAX_LENGTH}
+                  value={value}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                />
+              )}
+            />
+            <Text style={styles.counter}>
+              {(contentValue ?? '').length}/{POST_CONTENT_MAX_LENGTH}
             </Text>
-          )}
-        </Pressable>
+
+            {errors.content && (
+              <Text style={styles.error}>{errors.content.message}</Text>
+            )}
+            {serverError && <Text style={styles.error}>{serverError}</Text>}
+          </Animated.View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <Pressable
+            style={[
+              styles.postBtn,
+              (isSubmitting || !isValid) && styles.postBtnDisabled,
+            ]}
+            onPress={handleSubmit(onSubmit)}
+            disabled={isSubmitting || !isValid}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size='small' color='#fff' />
+            ) : (
+              <Text style={styles.postBtnText}>Post now</Text>
+            )}
+          </Pressable>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+  container: { flex: 1, backgroundColor: '#F3F4F8' },
+  scrollContent: { flexGrow: 1, padding: 16 },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 2,
   },
-  post: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  postDisabled: { color: '#9CA3AF' },
-  body: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+  composerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  postingAs: { fontSize: 14, color: '#6B7280' },
+  postingAsBold: { color: '#111827', fontWeight: '700' },
   input: {
     color: '#111827',
-    minHeight: 140,
+    minHeight: 160,
     textAlignVertical: 'top',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: '#F9FAFB',
+    lineHeight: 22,
   },
-  counter: { textAlign: 'right', color: '#9CA3AF', fontSize: 13, marginTop: 4 },
-  error: {
-    color: '#DC2626',
-    fontSize: 14,
-    marginBottom: 8,
-    position: 'absolute',
-    bottom: 0,
-    left: 20,
+  counter: { textAlign: 'right', color: '#9CA3AF', fontSize: 13, marginTop: 8 },
+  error: { color: '#DC2626', fontSize: 14, marginTop: 8 },
+  footer: {
+    padding: 16,
+    backgroundColor: '#F3F4F8',
   },
   postBtn: {
     backgroundColor: '#111827',
-    borderRadius: 12,
-    paddingVertical: 15,
+    borderRadius: 999,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginHorizontal: 20,
+    shadowColor: '#111827',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
   },
-  postBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
+  postBtnDisabled: {
+    backgroundColor: '#D1D5DB',
+    shadowOpacity: 0,
+    elevation: 0,
   },
+  postBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

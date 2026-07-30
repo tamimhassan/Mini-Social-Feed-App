@@ -959,6 +959,11 @@
     sf-symbols-typescript "^2.1.0"
     vaul "^1.1.2"
 
+"@expo/vector-icons@^15.1.1":
+  version "15.1.1"
+  resolved "https://registry.yarnpkg.com/@expo/vector-icons/-/vector-icons-15.1.1.tgz#4b1d2c60493c0b0536972f0a5babd5f5c85b48f4"
+  integrity sha512-Iu2VkcoI5vygbtYngm7jb4ifxElNVXQYdDrYkT7UCEIiKLeWnQY0wf2ZhHZ+Wro6Sc5TaumpKUOqDRpLi5rkvw==
+
 "@expo/ws-tunnel@^2.0.0":
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/@expo/ws-tunnel/-/ws-tunnel-2.0.0.tgz#32d5fae46c7deb34cdf6b319a53b8a19b7915c93"
@@ -2248,6 +2253,11 @@ expo-keep-awake@~57.0.1:
   version "57.0.1"
   resolved "https://registry.yarnpkg.com/expo-keep-awake/-/expo-keep-awake-57.0.1.tgz#75dfd3d6faeb0f32eb8b670d6b736375fdf2cdb8"
   integrity sha512-28lkFImeXTS+bhAjuCFV7w7tW5bXg27BJVrxv+nC/nyYa86qEa0oFeHwqol6ha5k4pdVDQgBF09GM4A1k76Ssg==
+
+expo-linear-gradient@^57.0.1:
+  version "57.0.1"
+  resolved "https://registry.yarnpkg.com/expo-linear-gradient/-/expo-linear-gradient-57.0.1.tgz#6dac2dc25842a97e35f52a1b843b8f30c8f20146"
+  integrity sha512-CpS8eMqoIWcHVGKV66zbDvzotCw9qYp3f8CuI9N+h1LaO0tMLUzBpkhAKePUsXlpN3yolYlHFSPkfVZ/uSh+iA==
 
 expo-linking@~57.0.4:
   version "57.0.4"
